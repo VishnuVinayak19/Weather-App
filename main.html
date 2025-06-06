@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Live Weather App</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Poppins', sans-serif;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      transition: background-image 1s ease-in-out;
+      color: #fff;
+    }
+    .app-container {
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 20px;
+      border-radius: 20px;
+      max-width: 800px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 0 15px rgba(0,0,0,0.6);
+    }
+    h1 { background: radial-gradient(circle, #82f369 0%, #91cfff 40%, #ffaacc 100%);
+        color: transparent;
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 15px; 
+    }
+    .search-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    input[type="text"] {
+      padding: 10px;
+      flex: 1 1 250px;
+      border-radius: 20px;
+      border: none;
+      outline: none;
+      background: #333;
+      color: #fff;
+      font-size: 16px;
+      min-width: 150px;
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 20px;
+      background: #ff9800;
+      color: #fff;
+      cursor: pointer;
+      font-size: 16px;
+      flex: 0 0 auto;
+    }
+    label {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      font-size: 16px;
+      gap: 5px;
+      user-select: none;
+    }
+    .current-weather, .hourly, .forecast {
+      margin: 20px 0;
+      padding: 15px;
+      background: rgba(0,0,0,0.5);
+      border-radius: 15px;
+    }
+    .icon img { width: 60px; }
+    .forecast-grid, .hour-grid {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      margin-top: 10px;
+    }
+    .day, .hour {
+      background: #222;
+      padding: 10px;
+      border-radius: 10px;
+      font-size: 14px;
+    }
+    .day p, .hour p { margin: 5px 0; }
+    .extra-info { margin-top: 10px; font-size: 14px; }
+    @media (max-width: 600px) {
+      .icon img { width: 40px; }
+      input[type="text"] { font-size: 14px; }
+      button, label { font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <h1>Live Weather App</h1>
+    <div class="search-container">
+      <input type="text" id="city" placeholder="Enter city..." />
+      <button onclick="getWeather()">Get Weather</button>
+      <button onclick="speakCity()">🎤 Speak</button>
+      <label><input type="checkbox" id="unitToggle" onchange="getWeather()"> °F</label>
+    </div>
+
+    <div class="current-weather">
+      <h2 id="cityName">City</h2>
+      <div class="icon"></div>
+      <p id="temperature">--°</p>
+      <p id="description">--</p>
+      <div class="extra-info" id="details"></div>
+    </div>
+
+    <div class="hourly">
+      <h3>Hourly Forecast</h3>
+      <div class="hour-grid" id="hourlyForecast"></div>
+    </div>
+
+    <div class="forecast">
+      <h3>4-Day Forecast</h3>
+      <div class="forecast-grid">
+        <div class="day"><p class="weekday">--</p><div class="icon"></div><p class="temp">--°</p></div>
+        <div class="day"><p class="weekday">--</p><div class="icon"></div><p class="temp">--°</p></div>
+        <div class="day"><p class="weekday">--</p><div class="icon"></div><p class="temp">--°</p></div>
+        <div class="day"><p class="weekday">--</p><div class="icon"></div><p class="temp">--°</p></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // Background images for weather types (multiple to cycle)
+  const weatherBackgrounds = {
+    clear: [
+      'https://images.pexels.com/photos/414171/pexels-photo-414171.jpeg',
+      'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1350&q=80',
+      'https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1350&q=80'
+    ],
+    clouds: [
+      'https://images.pexels.com/photos/158163/clouds-cloudporn-weather-lookup-158163.jpeg',
+      'https://images.unsplash.com/photo-1499346030926-9a72daac6c63?auto=format&fit=crop&w=1350&q=80',
+      'https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=1350&q=80'
+    ],
+    rain: [
+      'https://images.pexels.com/photos/110874/pexels-photo-110874.jpeg',
+      'https://images.unsplash.com/photo-1527766833261-b09c3163a791?auto=format&fit=crop&w=1350&q=80',
+      'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?auto=format&fit=crop&w=1350&q=80'
+    ],
+    snow: [
+      'https://images.pexels.com/photos/60561/pexels-photo-60561.jpeg',
+      'https://images.unsplash.com/photo-1608889175453-6b9a03e7f5e7?auto=format&fit=crop&w=1350&q=80',
+      'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1350&q=80'
+    ],
+    default: [
+      'https://images.pexels.com/photos/268917/pexels-photo-268917.jpeg',
+      'https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=1350&q=80',
+      'https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=1350&q=80'
+    ]
+  };
+
+  let backgroundTimer;
+  let currentBackgroundIndex = 0;
+  let currentCondition = 'default';
+
+  async function getWeather() {
+    const city = document.getElementById('city').value.trim();
+    if (!city) {
+      alert('Please enter a city name.');
+      return;
+    }
+
+    const unitToggle = document.getElementById('unitToggle').checked;
+    const unit = unitToggle ? 'imperial' : 'metric';
+    const symbol = unitToggle ? '°F' : '°C';
+    const apiKey = 'da5cc509bc967933cf9f957a7a06eb9b';
+
+    const currentUrl = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${apiKey}&units=${unit}`;
+    const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(city)}&appid=${apiKey}&units=${unit}`;
+
+    try {
+      const currentRes = await fetch(currentUrl);
+      if (!currentRes.ok) throw new Error('City not found');
+      const currentData = await currentRes.json();
+
+      const temp = currentData.main.temp;
+      const wind = currentData.wind.speed;
+      const humidity = currentData.main.humidity;
+      const sunrise = new Date(currentData.sys.sunrise * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const sunset = new Date(currentData.sys.sunset * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      document.getElementById('cityName').textContent = currentData.name + ', ' + currentData.sys.country;
+      document.getElementById('temperature').textContent = `Temperature: ${temp}${symbol}`;
+      document.getElementById('description').textContent = capitalizeFirstLetter(currentData.weather[0].description);
+      document.querySelector('.current-weather .icon').innerHTML =
+        `<img src="https://openweathermap.org/img/wn/${currentData.weather[0].icon}@2x.png" alt="Weather icon">`;
+
+      document.getElementById('details').innerHTML = `
+        Wind: ${wind} ${unit === 'metric' ? 'm/s' : 'mph'} | 
+        Humidity: ${humidity}% | 
+        Sunrise: ${sunrise} | Sunset: ${sunset}`;
+
+      // Set current weather condition for background cycling
+      currentCondition = currentData.weather[0].main.toLowerCase();
+      if (!weatherBackgrounds[currentCondition]) currentCondition = 'default';
+      currentBackgroundIndex = 0;
+      changeBackground(currentCondition);
+
+      // Clear previous timer if exists
+      if (backgroundTimer) clearInterval(backgroundTimer);
+
+      // Cycle background every 10 minutes (600000 ms)
+      backgroundTimer = setInterval(() => {
+        currentBackgroundIndex++;
+        changeBackground(currentCondition);
+      }, 600000);
+
+      // Fetch forecast data
+      const forecastRes = await fetch(forecastUrl);
+      if (!forecastRes.ok) throw new Error('Forecast data not found');
+      const forecastData = await forecastRes.json();
+
+      // Hourly forecast (next 6 blocks, 3 hours each = 18 hours approx)
+      const hourlyContainer = document.getElementById('hourlyForecast');
+      hourlyContainer.innerHTML = '';
+      for (let i = 0; i < 6; i++) {
+        const hourData = forecastData.list[i];
+        const time = new Date(hourData.dt_txt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        hourlyContainer.innerHTML += `
+          <div class="hour">
+            <p>${time}</p>
+            <img src="https://openweathermap.org/img/wn/${hourData.weather[0].icon}.png" alt="weather icon" />
+            <p>${Math.round(hourData.main.temp)}${symbol}</p>
+          </div>`;
+      }
+
+      // 4-day forecast (daily at ~12:00 pm)
+      const days = document.querySelectorAll('.forecast .day');
+      let dayCount = 0;
+      // We pick forecastData.list items around midday (12:00:00)
+      for (let i = 0; i < forecastData.list.length && dayCount < days.length; i++) {
+        if (forecastData.list[i].dt_txt.includes("12:00:00")) {
+          const forecast = forecastData.list[i];
+          const dayName = new Date(forecast.dt_txt).toLocaleDateString('en-US', { weekday: 'short' });
+          days[dayCount].querySelector('.weekday').textContent = dayName;
+          days[dayCount].querySelector('.icon').innerHTML =
+            `<img src="https://openweathermap.org/img/wn/${forecast.weather[0].icon}.png" alt="forecast icon">`;
+          days[dayCount].querySelector('.temp').textContent = `${Math.round(forecast.main.temp)}${symbol}`;
+          dayCount++;
+        }
+      }
+
+    } catch (err) {
+      alert("Failed to fetch weather data. Please check the city name.");
+      console.error(err);
+    }
+  }
+
+  function changeBackground(condition) {
+    const images = weatherBackgrounds[condition] || weatherBackgrounds['default'];
+    const imageUrl = images[currentBackgroundIndex % images.length];
+    document.body.style.backgroundImage = `url('${imageUrl}')`;
+  }
+
+  function capitalizeFirstLetter(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+  }
+
+  function speakCity() {
+    if (!('SpeechRecognition' in window) && !('webkitSpeechRecognition' in window)) {
+      alert('Speech recognition not supported in this browser.');
+      return;
+    }
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.start();
+
+    recognition.onresult = (event) => {
+      const city = event.results[0][0].transcript;
+      document.getElementById('city').value = city;
+      getWeather();
+    };
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error', event.error);
+      alert('Speech recognition error: ' + event.error);
+    };
+  }
+</script>
+</body>
+</html>
